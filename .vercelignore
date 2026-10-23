@@ -1,0 +1,3 @@
+# Example files should not be deployed
+*.example
+speed-insights.config.md
