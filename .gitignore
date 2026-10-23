@@ -35,3 +35,30 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Node.js dependencies #
+########################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts #
+###################
+.next/
+.nuxt/
+dist/
+build/
+out/
+.cache/
+.turbo/
+.vercel/
+*.tsbuildinfo
+
+# Environment variables #
+#########################
+.env
+.env.local
+.env.production
+.env.development

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream the Muse - Архитектор 1052</title>
+    <meta name="description" content="Dream the Muse - творческая вселенная с ИИ-персонажем Архитектор 1052">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            opacity: 0.85;
+        }
+        
+        .api-info {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 40px;
+        }
+        
+        .api-info h2 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        
+        .api-endpoint {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1rem;
+            word-break: break-all;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .container {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+    
+    <!-- Vercel Speed Insights -->
+    <script>
+        window.si = window.si || function () { 
+            (window.siq = window.siq || []).push(arguments); 
+        };
+    </script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Dream the Muse</h1>
+        <p class="subtitle">Архитектор 1052</p>
+        
+        <p>
+            Добро пожаловать в творческую вселенную Dream the Muse — 
+            пространство для создания музыки, текстов, историй и визуальных образов 
+            с помощью художественного ИИ-персонажа.
+        </p>
+        
+        <div class="api-info">
+            <h2>API Endpoint</h2>
+            <p>Чат-API для взаимодействия с Архитектором 1052 доступен по адресу:</p>
+            <div class="api-endpoint">
+                POST /api/chat
+            </div>
+            <p style="margin-top: 20px; font-size: 0.95rem;">
+                API принимает JSON с массивом сообщений и возвращает творческие ответы 
+                на русском языке.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
