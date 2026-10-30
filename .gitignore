@@ -39,3 +39,7 @@ Thumbs.db
 # Node.js #
 ###########
 node_modules/
+
+# Local credentials and Vercel links
+.env*
+.vercel/

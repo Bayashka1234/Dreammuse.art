@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "telegram:setup": "node --env-file=.env.telegram scripts/setup-telegram.js"
+  },
   "dependencies": {
     "@vercel/speed-insights": "^2.0.0"
   }
