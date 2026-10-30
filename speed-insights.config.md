@@ -1,16 +1,32 @@
 # Vercel Speed Insights Configuration
 
-## Current Status
+## Current Status ✅
 
-The `@vercel/speed-insights` package has been installed in this project.
+The `@vercel/speed-insights` package (v2.0.0) has been successfully installed and configured in this project.
 
-## Important Note
+**Speed Insights is now active** in `public/index.html` using the vanilla JavaScript integration method as recommended by the official Vercel documentation.
 
-**Speed Insights requires a frontend application to function.** This project currently contains only backend API endpoints (`/api/chat.js`). Speed Insights measures client-side performance metrics like Core Web Vitals (Largest Contentful Paint, First Input Delay, Cumulative Layout Shift) which require a browser environment.
+## Implementation Details
 
-## When You Add a Frontend
+Speed Insights has been integrated into the frontend HTML file located at `public/index.html`. The implementation uses the official Vercel Speed Insights script that tracks Core Web Vitals (Largest Contentful Paint, First Input Delay, Cumulative Layout Shift) in the browser environment.
 
-Once you add frontend files to this project, you can activate Speed Insights using one of the following methods:
+## Current Integration (Vanilla JavaScript)
+
+The `public/index.html` file includes Speed Insights using the following code in the `<head>` section:
+
+```html
+<!-- Vercel Speed Insights -->
+<script>
+  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
+```
+
+This is the recommended approach for HTML-based applications according to the [official Vercel Speed Insights quickstart guide](https://vercel.com/docs/speed-insights/quickstart).
+
+## Alternative Integration Methods
+
+If you migrate to a different framework in the future, you can use these alternative methods:
 
 ### For HTML Files (Vanilla JavaScript)
 
