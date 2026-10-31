@@ -1,0 +1,36 @@
+name: Telegram notification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send test message to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys, urllib.request, urllib.error
+          token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+          chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+          if not token or not chat:
+              sys.exit("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID secret")
+          body = json.dumps({"chat_id": chat, "text": "Reality-1: GitHub Actions notification test."}).encode()
+          req = urllib.request.Request(f"https://api.telegram.org/bot{token}/sendMessage", data=body, headers={"Content-Type": "application/json"})
+          try:
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  ok = json.load(r).get("ok")
+          except urllib.error.HTTPError as e:
+              sys.exit(f"Telegram returned HTTP {e.code}")
+          except Exception as e:
+              sys.exit(f"Request failed: {type(e).__name__}")
+          if not ok:
+              sys.exit("Telegram did not confirm delivery")
+          print("Message sent.")
+          PY
