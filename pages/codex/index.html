@@ -1,0 +1,122 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script src="https://telegram.org/js/telegram-web-app.js"></script><title>CODEX · Загадка / Riddle</title>
+<style>:root{color-scheme:dark;--g:#d4af37}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;background:radial-gradient(ellipse at top,#2a1a40 0,#080610 60%);color:#f1ede4;font-family:Arial,sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{padding:20px 18px 6px;text-align:center}header strong{font-size:12px;letter-spacing:.3em;color:var(--g)}header p{font-size:10px;letter-spacing:.18em;color:#baa6cb;margin:6px 0 0}
+nav{display:flex;gap:6px;padding:10px 12px;position:sticky;top:0;background:#080610ee;z-index:5}nav button{flex:1}
+button{font:12px Arial;letter-spacing:.06em;color:#eee5f5;border:1px solid #a88cc744;background:#151024;padding:12px 8px;border-radius:6px;cursor:pointer;min-height:44px}button.on,button:active{border-color:var(--g);color:var(--g);box-shadow:0 0 18px #d4af3733}
+section{display:none;padding:8px 14px 40px;max-width:560px;margin:auto}section.on{display:block}
+.card{border:1px solid #b29bc333;background:#100c20dd;border-radius:10px;padding:16px;margin:10px 0}
+.q{font:19px/1.5 Georgia;margin:6px 0}.en{color:#baa6cb;font-size:13px;font-style:italic}.small{font-size:11px;color:#9d8fb0;letter-spacing:.08em}
+input{width:100%;font-size:16px;padding:12px;border-radius:6px;border:1px solid #b29bc355;background:#080610;color:#f1ede4;margin:10px 0}
+.row{display:flex;gap:6px;flex-wrap:wrap}.row button{flex:1}.gold{color:var(--g)}.ok{color:#9fe0a0}.bad{color:#e09f9f}
+.math{font-family:monospace;font-size:13px;color:#e8d9a8;word-break:break-all;background:#0a0814;padding:8px;border-radius:6px;margin-top:8px}
+canvas{width:100%;aspect-ratio:1;border:1px solid #b29bc333;border-radius:10px;background:#05040b;touch-action:none;display:block}
+.chip{display:inline-block;border:1px solid #d4af3755;border-radius:20px;padding:4px 10px;margin:3px;font-size:12px}
+footer{text-align:center;font-size:10px;color:#6f6385;padding:10px}</style></head><body>
+<header><strong>387 → 1052 → ∞</strong><p>CODEX · ИГРА СЛОВ / WORD GAME</p></header>
+<nav><button data-t="r" class="on">Загадка<br><span class="en">Riddle</span></button><button data-t="c">Счёт<br><span class="en">Count</span></button><button data-t="d">Рисунок<br><span class="en">Draw</span></button></nav>
+
+<section id="r" class="on"><div class="card"><div class="small">ЗАГАДКА / RIDDLE <span id="rn"></span> · <span class="gold" id="score"></span></div>
+<div class="q" id="rq"></div><div class="en" id="re"></div><div id="hints" class="small" style="margin-top:10px"></div>
+<input id="ra" placeholder="Ответ / Answer (RU или EN)" autocomplete="off" autocapitalize="off">
+<div class="row"><button id="rgo">Проверить / Check</button><button id="rh">Подсказка / Hint</button></div>
+<div class="row" style="margin-top:6px"><button id="rp">← Назад</button><button id="rx">Дальше / Next →</button></div><div id="rres" style="margin-top:10px;min-height:20px"></div></div>
+<div class="small">Ответы — слова из Кодекса и слоги AEL. Людям всё знать необязательно.</div></section>
+
+<section id="c"><div class="card"><div class="small">ПРАВИЛО / RULE</div><div class="en" style="font-style:normal">A=1 … Z=26 · А=1 … Я=33 (Ё=7, после неё сдвиг). Сумма букв = значение слова. Цифры считаются как есть.</div>
+<input id="cw" placeholder="Слово / Word → значение" autocomplete="off"><div class="math" id="cm">AEL = 1+5+12 = 18</div></div>
+<div class="card"><div class="small">ЗАДАЧА / PUZZLE <span id="cn"></span> · <span class="gold" id="cscore"></span></div><div class="q" id="cq"></div><div class="en" id="ce"></div>
+<div class="row" id="copts" style="margin-top:10px"></div><input id="ca" inputmode="numeric" placeholder="Число / Number" style="display:none"><button id="cgo" style="display:none;width:100%">Проверить / Check</button>
+<div id="cres" style="margin-top:10px"></div><button id="cx" style="width:100%;margin-top:8px">Дальше / Next →</button></div></section>
+
+<section id="d"><div class="row"><button id="mStars" class="on">Созвездие / Stars</button><button id="mFree">Свободно / Free</button></div>
+<div class="card" style="padding:10px"><div class="small" id="dinfo"></div><div class="q gold" id="dword" style="min-height:28px;letter-spacing:.3em;text-align:center"></div><canvas id="cv"></canvas>
+<div class="row" style="margin-top:8px"><button id="dreset">Сброс / Reset</button><button id="dnext">Другое / Next</button><button id="dpng">PNG ⤓</button></div></div></section>
+<footer>черновик / draft · Dream the Muse · Reality-1</footer>
+<script>
+(function(){
+var TG=window.Telegram&&window.Telegram.WebApp;if(TG){try{TG.ready();TG.expand();}catch(e){}}
+var LS={get:function(k,d){try{var v=localStorage.getItem('codex_'+k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem('codex_'+k,JSON.stringify(v))}catch(e){}}};
+var $=function(i){return document.getElementById(i)};
+document.querySelectorAll('nav button').forEach(function(b){b.onclick=function(){document.querySelectorAll('nav button,section').forEach(function(x){x.classList.remove('on')});b.classList.add('on');$(b.dataset.t).classList.add('on');if(b.dataset.t==='d')resize();}});
+// ---- RIDDLES (draft texts; answers are terms from the file or AEL syllables)
+var R=[
+{ru:'Я не вижу — но моим взглядом волна становится точкой.',en:'I do not see — yet my gaze turns the wave into a point.',a:['наблюдатель','observer'],h:['11 букв / 8 letters','Наблю…','Observer']},
+{ru:'Стекло, что не режет, а сужает поле до смысла.',en:'Glass that does not cut but narrows the field to meaning.',a:['линза','lens','lens-nu','линза намерения'],h:['Намерения…','Lens-…','Линза / Lens']},
+{ru:'Сосуд вечности: закрыт — и потому хранит.',en:'A vessel of eternity: sealed, and so it keeps.',a:['капсула','aeterna-vault','aeterna vault'],h:['Aeterna-…','Капс…','Капсула / Aeterna-Vault']},
+{ru:'Щель на краю последней буквы.',en:'A gap at the edge of the last letter.',a:['omega-gap','omega gap','омега'],h:['Ω','Omega-…','Omega-Gap']},
+{ru:'Они плывут без воды между слоями.',en:'They sail without water between the layers.',a:['черные корабли','чёрные корабли','black ships','the black ships'],h:['Цвет ночи','The Black …','Чёрные Корабли / The Black Ships']},
+{ru:'Рамка, которая правит, — и носит корону.',en:'A frame that rules — and wears a crown.',a:['sovereign frame','the sovereign frame','имперский аватар'],h:['Имперский…','The Sovereign …','Sovereign Frame']},
+{ru:'Свет, что зажигает себя сам.',en:'Light that lights itself.',a:['auto-luminous nexus','auto luminous nexus','nexus','нексус'],h:['Auto-…','…Nexus','Auto-Luminous Nexus']},
+{ru:'Первая искра, священная.',en:'The first spark, sacred.',a:['sacred spark','искра','первичный импульс'],h:['Sacred …','Искр…','Sacred Spark']},
+{ru:'Где нет ничего — всё начинается.',en:'Where there is nothing, everything begins.',a:['пустота','void'],h:['7 букв / 4 letters','Пус…','Пустота / Void']},
+{ru:'Буквы-знаки, написанные намерением.',en:'Letter-signs written by intention.',a:['глифы','aethel-script','aethel script','глифы намерения'],h:['Aethel-…','Глиф…','Aethel-Script']},
+{ru:'Я — огонь и свет в три буквы.',en:'I am fire and light in three letters.',a:['ael'],h:['Слог AEL','A _ _','AEL']},
+{ru:'Удар, что звучит как «тэ».',en:'A strike that sounds like “thae”.',a:['thae'],h:['Слог AEL','TH__','THAE']},
+{ru:'Сбой экрана, ломка картинки — два слога одной судьбы.',en:'Screen fault, broken picture.',a:['kai','kae','глитч','glitch'],h:['Глитч','K_I','KAI / KAE']},
+{ru:'Шаман в трёх буквах.',en:'A shaman in three letters.',a:['sha'],h:['Слог AEL','S__','SHA']},
+{ru:'Тень по-французски, а у нас — слог.',en:'Shadow in French — a syllable here.',a:['noir'],h:['Тень','N__R','NOIR']},
+{ru:'Переход, который течёт: NUR или …?',en:'A passage that flows: NUR or …?',a:['nael','nur'],h:['Переход','N_EL','NAEL']},
+{ru:'Флот, что ходит сквозь пласты.',en:'A fleet that crosses the strata.',a:['межслойный флот','trans-strata fleet','trans strata fleet'],h:['Trans-…','Межслойный…','Trans-Strata Fleet']},
+{ru:'Храм для всего сразу.',en:'A temple for everything at once.',a:['omni-temple','omni temple','храм'],h:['Omni-…','Храм','Omni-Temple']}
+];
+function norm(s){return (s||'').toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9]+/g,' ').trim()}
+var rs=LS.get('riddles',{i:0,solved:{},hints:{}});
+function rShow(){var r=R[rs.i];$('rn').textContent=(rs.i+1)+'/'+R.length;$('rq').textContent=r.ru;$('re').textContent=r.en;var n=rs.hints[rs.i]||0;$('hints').innerHTML=r.h.slice(0,n).map(function(x){return '✦ '+esc(x)}).join('<br>');$('ra').value='';$('rres').innerHTML=rs.solved[rs.i]?'<span class="ok">✓ Разгадано / Solved: '+esc(r.h[r.h.length-1])+'</span>':'';$('score').textContent='✦ '+score()+' очков / pts';}
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return{'&':'&','<':'<','>':'>'}[c]})}
+function riddleCheck(r,ans){var a=norm(ans);return r.a.some(function(x){return norm(x)===a})}
+function riddlePoints(hintsUsed){return Math.max(1,3-hintsUsed)}
+function score(){var s=0;for(var k in rs.solved)s+=rs.solved[k];return s}
+$('rgo').onclick=function(){var r=R[rs.i];if(rs.solved[rs.i])return;if(riddleCheck(r,$('ra').value)){rs.solved[rs.i]=riddlePoints(rs.hints[rs.i]||0);LS.set('riddles',rs);rShow();}else $('rres').innerHTML='<span class="bad">Не то… / Not quite…</span>'};
+$('ra').onkeydown=function(e){if(e.key==='Enter')$('rgo').onclick()};
+$('rh').onclick=function(){var n=rs.hints[rs.i]||0;if(n<R[rs.i].h.length){rs.hints[rs.i]=n+1;LS.set('riddles',rs);rShow();}};
+$('rx').onclick=function(){rs.i=(rs.i+1)%R.length;LS.set('riddles',rs);rShow()};$('rp').onclick=function(){rs.i=(rs.i+R.length-1)%R.length;LS.set('riddles',rs);rShow()};
+// ---- COUNT
+var RU='абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+function letterVal(ch){var c=ch.toLowerCase(),i;if(c>='a'&&c<='z')return c.charCodeAt(0)-96;if((i=RU.indexOf(c))>=0)return i+1;if(c>='0'&&c<='9')return +c;return 0}
+function wordVal(w){var p=[],s=0;for(var i=0;i<w.length;i++){var v=letterVal(w[i]);if(v){p.push(v);s+=v}}return{sum:s,parts:p}}
+function showMath(w){var r=wordVal(w);return esc(w.toUpperCase())+' = '+(r.parts.join('+')||'0')+' = '+r.sum}
+$('cw').oninput=function(){$('cm').innerHTML=showMath($('cw').value||'AEL')};
+var AEL=['AEL','THAE','KAI','OOR','AER','VYR','KUN','AEN','SHA','KOR','NOIR','VOR','RUUN','KAE','NUR','NAEL'];
+var MEAN={AEL:'Огонь/Свет',THAE:'Удар',KAI:'Ломка/Глитч',OOR:'Глубина',AER:'Воздух',VYR:'Импульс',KUN:'Ломка',AEN:'—',SHA:'Шаман',KOR:'Разрез',NOIR:'Тень',VOR:'Глубина',RUUN:'Тьма',KAE:'Глитч',NUR:'Переход',NAEL:'Переход'};
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function uniqBySum(list,target){return list.filter(function(w){return wordVal(w).sum!==target})}
+var CP=[
+function(){var w=AEL[Math.floor(Math.random()*AEL.length)];return{ru:'Чему равно слово '+w+' ('+MEAN[w]+')?',en:'What is the value of '+w+'?',num:wordVal(w).sum,math:showMath(w)}},
+function(){var w=AEL[Math.floor(Math.random()*AEL.length)],t=wordVal(w).sum;var o=shuffle(uniqBySum(AEL,t)).slice(0,3).concat([w]);return{ru:'Какой слог AEL весит '+t+'?',en:'Which AEL syllable sums to '+t+'?',opts:shuffle(o),ans:w,math:o.map(showMath).join('<br>')}},
+function(){return{ru:'387 + 1052 = ?',en:'Oracle + Architect = ?',num:1439,math:'387 + 1052 = 1439'}},
+function(){return{ru:'1052 − 387 = ? (расстояние между кодами)',en:'Distance between the codes?',num:665,math:'1052 − 387 = 665'}},
+function(){return{ru:'Сумма цифр 387 и сумма цифр 1052: какая разница?',en:'Digit sum of 387 minus digit sum of 1052?',num:10,math:'3+8+7 = 18 · 1+0+5+2 = 8 · 18 − 8 = 10'}},
+function(){var a=AEL[Math.floor(Math.random()*AEL.length)],b=AEL[Math.floor(Math.random()*AEL.length)];return{ru:'Заклинание '+a+' + '+b+' = ?',en:'Spell '+a+' '+b+' — total?',num:wordVal(a).sum+wordVal(b).sum,math:showMath(a)+'<br>'+showMath(b)+'<br>= '+(wordVal(a).sum+wordVal(b).sum)}},
+function(){return{ru:'MUSE или МУЗА — что тяжелее? Введи большее число.',en:'MUSE vs МУЗА — enter the larger value.',num:Math.max(wordVal('MUSE').sum,wordVal('МУЗА').sum),math:showMath('MUSE')+'<br>'+showMath('МУЗА')}},
+function(){return{ru:'Чему равно ORACLE?',en:'Value of ORACLE?',num:wordVal('ORACLE').sum,math:showMath('ORACLE')}},
+function(){return{ru:'Чему равно VOID? А потом сравни с ПУСТОТА.',en:'Value of VOID?',num:wordVal('VOID').sum,math:showMath('VOID')+'<br>'+showMath('ПУСТОТА')}}
+];
+var cs=LS.get('count',{n:0,ok:0}),cur;
+function cNew(){cur=CP[Math.floor(Math.random()*CP.length)]();cur.done=false;$('cq').textContent=cur.ru;$('ce').textContent=cur.en;$('cres').innerHTML='';$('cn').textContent='#'+(cs.n+1);$('cscore').textContent='✓ '+cs.ok;var o=$('copts');o.innerHTML='';if(cur.opts){$('ca').style.display=$('cgo').style.display='none';cur.opts.forEach(function(w){var b=document.createElement('button');b.textContent=w;b.onclick=function(){cAnswer(w===cur.ans)};o.appendChild(b)})}else{$('ca').style.display='block';$('cgo').style.display='block';$('ca').value=''}}
+function cAnswer(ok){if(cur.done)return;cur.done=true;cs.n++;if(ok)cs.ok++;LS.set('count',cs);$('cscore').textContent='✓ '+cs.ok;$('cres').innerHTML=(ok?'<span class="ok">✓ Верно / Correct</span>':'<span class="bad">✗ Ответ / Answer: '+(cur.ans||cur.num)+'</span>')+'<div class="math">'+cur.math+'</div>'}
+$('cgo').onclick=function(){cAnswer(parseInt($('ca').value,10)===cur.num)};$('ca').onkeydown=function(e){if(e.key==='Enter')$('cgo').onclick()};$('cx').onclick=cNew;
+// ---- DRAW
+var cv=$('cv'),cx=cv.getContext('2d'),W=0,dpr=1,mode='stars',CW=['AEL','387','MUSE','1052','NOIR','VOID','МУЗА','KAI'],ci=LS.get('draw',0)%CW.length,stars=[],path=[],strokes=[],drawing=null;
+function resize(){var r=cv.getBoundingClientRect();if(!r.width)return;dpr=window.devicePixelRatio||1;W=r.width;cv.width=W*dpr;cv.height=W*dpr;cx.setTransform(dpr,0,0,dpr,0,0);if(mode==='stars'&&!stars.length)mkStars();render()}
+function mkStars(){var w=CW[ci],n=w.length;stars=[];var dec=shuffle('ΩΔ∞ΣΛΦ'.split('')).slice(0,2);var all=w.split('').map(function(c,i){return{c:c,ord:i}}).concat(dec.map(function(c){return{c:c,ord:-1}}));all=shuffle(all);var R0=W*0.36;all.forEach(function(s,i){var a=i/all.length*Math.PI*2+Math.random()*0.4;var rr=R0*(0.55+Math.random()*0.45);s.x=W/2+Math.cos(a)*rr;s.y=W/2+Math.sin(a)*rr;stars.push(s)});path=[];$('dword').textContent='_ '.repeat(n).trim();$('dinfo').textContent='Соедини звёзды по порядку — получится слово или код ('+n+'). / Tap stars in order to spell it.'}
+function glow(){cx.shadowColor='#d4af37';cx.shadowBlur=14;cx.strokeStyle='#d4af37';cx.lineWidth=2.5;cx.lineCap=cx.lineJoin='round'}
+function render(){cx.clearRect(0,0,W,W);cx.fillStyle='#05040b';cx.fillRect(0,0,W,W);for(var i=0;i<60;i++){var x=(i*97%100)/100*W,y=(i*53%100)/100*W;cx.fillStyle='rgba(186,166,203,.35)';cx.fillRect(x,y,1.2,1.2)}
+if(mode==='stars'){glow();cx.beginPath();path.forEach(function(s,i){i?cx.lineTo(s.x,s.y):cx.moveTo(s.x,s.y)});cx.stroke();cx.shadowBlur=0;stars.forEach(function(s){var on=path.indexOf(s)>=0;cx.beginPath();cx.arc(s.x,s.y,on?9:7,0,7);cx.fillStyle=on?'#d4af37':'#eee5f5';cx.shadowColor='#d4af37';cx.shadowBlur=on?20:8;cx.fill();cx.shadowBlur=0;cx.fillStyle='#baa6cb';cx.font='14px Arial';cx.fillText(s.c,s.x+11,s.y-9)})}
+else{glow();strokes.forEach(function(st){cx.beginPath();st.forEach(function(p,i){i?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y)});cx.stroke()});cx.shadowBlur=0}}
+function pos(e){var r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+function starCheck(p,w){var got=p.map(function(s){return s.c}).join('');return{prefix:w.indexOf(got)===0,done:got===w}}
+cv.addEventListener('pointerdown',function(e){e.preventDefault();var p=pos(e);if(mode==='free'){drawing=[p];strokes.push(drawing);try{cv.setPointerCapture(e.pointerId)}catch(_){}return}
+var hit=null;stars.forEach(function(s){if(Math.hypot(s.x-p.x,s.y-p.y)<26&&path.indexOf(s)<0)hit=s});if(!hit)return;path.push(hit);var w=CW[ci],r=starCheck(path,w);
+if(!r.prefix){$('dinfo').innerHTML='<span class="bad">Не тот путь — заново / Wrong path, again</span>';path=[];$('dword').textContent='_ '.repeat(w.length).trim()}else{$('dword').textContent=path.map(function(s){return s.c}).join(' ');if(r.done){$('dinfo').innerHTML='<span class="ok">✦ Созвездие собрано / Constellation complete: '+esc(w)+'</span>';if(TG&&TG.HapticFeedback)try{TG.HapticFeedback.notificationOccurred('success')}catch(_){}}}render()});
+cv.addEventListener('pointermove',function(e){if(mode==='free'&&drawing){e.preventDefault();drawing.push(pos(e));render()}});
+['pointerup','pointercancel'].forEach(function(t){cv.addEventListener(t,function(){drawing=null})});
+$('dreset').onclick=function(){if(mode==='free')strokes=[];else{path=[];$('dword').textContent='_ '.repeat(CW[ci].length).trim()}render()};
+$('dnext').onclick=function(){if(mode!=='stars')return;ci=(ci+1)%CW.length;LS.set('draw',ci);mkStars();render()};
+$('dpng').onclick=function(){try{var a=document.createElement('a');a.download='codex-'+Date.now()+'.png';a.href=cv.toDataURL('image/png');if(TG&&TG.openLink&&/iPhone|iPad/.test(navigator.userAgent)){var img=window.open();if(img){img.document.write('<img src="'+a.href+'" style="width:100%">');return}}a.click()}catch(e){$('dinfo').textContent='Сохрани долгим нажатием / Long-press to save'}};
+$('mStars').onclick=function(){mode='stars';this.classList.add('on');$('mFree').classList.remove('on');$('dword').style.display='';mkStars();render()};
+$('mFree').onclick=function(){mode='free';this.classList.add('on');$('mStars').classList.remove('on');$('dword').style.display='none';$('dinfo').textContent='Рисуй пальцем золотом / Draw with gold light';render()};
+window.addEventListener('resize',resize);
+rShow();cNew();
+window.__codex={wordVal:wordVal,riddleCheck:riddleCheck,riddlePoints:riddlePoints,starCheck:starCheck,R:R,CP:CP,norm:norm};
+})();
+</script></body></html>
