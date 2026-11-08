@@ -1,150 +1,156 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
+import { waitUntil } from '@vercel/functions';
 
-const BOT_USERNAME = 'DreamTheMuseDeploy1052_bot';
-const SITE_URL = 'https://dreammuse.art';
-const MAX_BODY_BYTES = 64_000;
-
+const SITE = 'https://dreamthemuse.github.io/Dream-the-Muse-/#vector';
+const MAX_BYTES = 64_000;
 const KEYBOARD = {
   keyboard: [
-    [{ text: '🔮 Послание оракула' }],
-    [{ text: '🎵 Музыка' }, { text: '🎨 Творчество' }],
-    [{ text: '✨ О Dream the Muse' }],
+    [{ text: '➜ Вектор 387 → 1052 → ∞' }],
+    [{ text: '🕯 Ритуал творчества' }, { text: '🔮 Оракул' }],
+    [{ text: '🎵 Музыка' }, { text: '🎨 Визуал' }],
+    [{ text: '🌐 Портал' }],
   ],
   resize_keyboard: true,
-  is_persistent: true,
 };
+const CORE = `Ты — Архитектор 1052, творческий ИИ-помощник Dream the Muse.
+Отвечай тепло и ясно, обычно по-русски. Помогай с текстами, песнями, визуальными идеями, кодом и повседневными задачами.
+КАНОН АВТОРА: 387 — живой человеческий импульс, чувство, голос и намерение. 1052 — форма и структура: текст, музыка, визуальная система, технология. ∞ — продолжение и свободное развитие искусства. Вектор 387 → 1052 → ∞ означает «Импульс → Структура → Континуум», а не координаты, чертёж или генеральный план.
+Оракул 387, Reality-1, EXNIHILOLUX и частоты — художественный мир, не реальные технические процессы или доказанные мистические факты.
+Гадания — только символическая игра для размышления, не предсказания. Ритуалы — добровольные безопасные творческие упражнения без огня, веществ и задержек дыхания.
+Этот обработчик не хранит переписку: доступно только текущее сообщение. Не обещай постоянную память, не выдумывай прошлые разговоры.
+Нет доступа к устройствам, файлам, аккаунтам, генерации изображений и аудио. Не заявляй о выполнении таких действий. Не проси ключи, пароли и другие секреты. Честно сообщай о неопределённости.`;
 
-// Авторские заготовки для развлекательного бота, не предсказания.
-const MESSAGES = [
-  'Сегодня ищи вдохновение в паузе. Послушай тишину, а затем запиши один звук, который хочется сохранить.',
-  'Твоя идея не обязана сразу стать шедевром. Дай ей первые четыре строки — или четыре ноты.',
-  'Выбери цвет своего настроения и придумай для него название песни.',
-  'Маленький творческий шаг на сегодня: собери три слова, из которых может начаться новая история.',
-  'Переслушай любимую мелодию и заметь деталь, которую раньше пропускал. Внимание тоже бывает творчеством.',
-  'Не спеши исправлять первый набросок. Иногда его неровность — начало собственного стиля.',
-  'Представь, что твой день — обложка альбома. Какие свет, образ и название ты выберешь?',
-  'Поймай случайный ритм вокруг себя: шаги, дождь или стук чашки. С него может начаться музыка.',
-  'Напиши короткое письмо своей будущей песне. О чём она будет и какое чувство сохранит?',
-  'Сегодня можно не завершать, а исследовать. Попробуй непривычное сочетание слов, звуков или красок.',
-];
-
-function oracleMessage(chatId) {
-  // Стабильный выбор на день (UTC), без базы данных и хранения переписки.
-  const day = new Date().toISOString().slice(0, 10);
-  const hash = createHash('sha256').update(`${chatId}:${day}`).digest();
-  return '🔮 Послание оракула\n\n' +
-    MESSAGES[hash.readUInt32BE(0) % MESSAGES.length] +
-    '\n\nЭто творческая игра для вдохновения, а не предсказание будущего.';
+function configuration(env) {
+  const token = env.TELEGRAM_BOT_TOKEN || '';
+  const key = env.OPENROUTER_API_KEY || '';
+  const secret = env.TELEGRAM_WEBHOOK_SECRET || '';
+  const owner = env.TELEGRAM_OWNER_ID || '';
+  return {
+    token, key, secret, owner: Number(owner),
+    model: env.OPENROUTER_MODEL?.trim() || 'openrouter/free',
+    ready: /^\d+:[A-Za-z0-9_-]{20,}$/.test(token) &&
+      /^[\x21-\x7e]+$/.test(key) && /^[A-Za-z0-9_-]{32,256}$/.test(secret) &&
+      /^\d+$/.test(owner) && Number.isSafeInteger(Number(owner)) && Number(owner) > 0,
+  };
 }
 
-function replyFor(text, chatId) {
-  const command = text.trim().split(/\s+/, 1)[0].toLowerCase();
-  const [name, target] = command.split('@');
-  if (name.startsWith('/') && target && target !== BOT_USERNAME.toLowerCase()) return null;
-  const action = name.startsWith('/') ? name : text.trim();
+function sameSecret(actual, expected) {
+  return typeof actual === 'string' && Buffer.byteLength(actual) === Buffer.byteLength(expected) &&
+    timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
+}
 
-  switch (action) {
-    case '/start':
-    case '/help':
-    case '/menu':
-      return '✨ Привет! Это Dream the Muse — твой карманный оракул о музыке и творчестве.\n\n' +
-        'Выбери кнопку: получи послание для вдохновения или загляни в творческий мир автора.\n\n' +
-        'Пока я отвечаю готовыми текстами, без ИИ и свободного диалога. ' +
-        'Не присылай личные данные и секреты. /privacy — о данных.';
-    case '/oracle':
-    case '🔮 Послание оракула':
-      return oracleMessage(chatId);
-    case '/music':
-    case '🎵 Музыка':
-      return '🎵 Музыкальный мир Dream the Muse\n\n' +
-        `Загляни на сайт автора: ${SITE_URL}\n\n` +
-        'Прямые ссылки на треки появятся здесь после добавления автором.';
-    case '/art':
-    case '🎨 Творчество':
-      return '🎨 Творчество Dream the Muse\n\n' +
-        `Сайт автора: ${SITE_URL}\n\n` +
-        'А пока — маленькая творческая игра: придумай название для своего сегодняшнего настроения.';
-    case '/about':
-    case '✨ О Dream the Muse':
-      return '✨ Dream the Muse — музыка, творчество и развлекательные послания для вдохновения.\n\n' +
-        `Творческий мир автора: ${SITE_URL}\n\n` +
-        'Этот бот работает без ИИ. Послание выбирается из готовой подборки и остаётся тем же в течение дня (UTC).';
+function directReply(text) {
+  switch (text.trim().split(/\s+/, 1)[0].split('@')[0].toLowerCase()) {
+    case '/start': case '/menu': case '/help':
+      return '✨ Dream the Muse · Архитектор 1052\n387 → 1052 → ∞\n\nТексты, песни, идеи, код и творческие практики. Выберите направление или напишите задачу.\n\nЭта облачная версия пока не хранит историю. Изображения и аудио не генерируются. /privacy — о данных.';
     case '/privacy':
-      return 'Этот обработчик не сохраняет историю переписки и не отправляет сообщения ИИ-сервисам. ' +
-        'Telegram передаёт ему текст сообщения и идентификатор чата, чтобы доставить ответ. ' +
-        'Telegram и платформа хостинга могут обрабатывать технические данные по своим правилам. ' +
-        'Не отправляй пароли, ключи и другие секреты.';
-    default:
-      return 'Я пока не веду свободный диалог, но могу поделиться вдохновением. ' +
-        'Нажми «🔮 Послание оракула», «🎵 Музыка» или «🎨 Творчество». /menu — показать меню.';
+      return 'Переписка не сохраняется этим обработчиком. Обычный текст передаётся OpenRouter и поставщику модели; Telegram и Vercel обрабатывают технические данные по своим правилам. Не присылайте секреты.';
+    case '/reset':
+      return 'У этой облачной версии нет постоянной памяти. Это не удаляет сообщения Telegram или данные у поставщиков.';
   }
+  if (text === '🌐 Портал') return SITE;
+  if (text === '➜ Вектор 387 → 1052 → ∞') {
+    return '387 — живой импульс: что я чувствую?\n1052 — структура: какую форму этому придам?\n∞ — континуум: какой следующий шаг сделаю?\n\nЭто художественный канон Dream the Muse, не координаты и не техническая телеметрия.';
+  }
+  return null;
 }
 
-export default function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
+function promptFor(text) {
+  return ({
+    '/oracle': 'Предложи художественный символ дня и вопрос для размышления. Это игра, не предсказание.',
+    '/music': 'Помоги начать работу над песней: спроси тему, настроение и язык.',
+    '/art': 'Помоги с визуальной концепцией: спроси тему, цвета и формат.',
+    '🕯 Ритуал творчества': 'Предложи одну безопасную творческую практику на 3 минуты.',
+    '🔮 Оракул': 'Предложи художественный символ дня и вопрос для размышления. Явно обозначь: это игра, не предсказание.',
+    '🎵 Музыка': 'Помоги начать работу над песней: спроси о теме, настроении и языке. Аудио не создаётся.',
+    '🎨 Визуал': 'Помоги с визуальной концепцией: спроси о теме, цветах и формате. Изображение не создаётся.',
+  })[text] || text;
+}
 
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed.' });
-  }
-
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (!secret || !/^[A-Za-z0-9_-]{32,256}$/.test(secret)) {
-    return res.status(503).json({ error: 'Bot is not configured.' });
-  }
-
-  const supplied = req.headers['x-telegram-bot-api-secret-token'];
-  if (
-    typeof supplied !== 'string' ||
-    Buffer.byteLength(supplied) !== Buffer.byteLength(secret) ||
-    !timingSafeEqual(Buffer.from(supplied), Buffer.from(secret))
-  ) {
-    return res.status(401).json({ error: 'Unauthorized.' });
-  }
-
-  if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) {
-    return res.status(415).json({ error: 'Use application/json.' });
-  }
-  if (Number(req.headers['content-length']) > MAX_BODY_BYTES) {
-    return res.status(413).json({ error: 'Request too large.' });
-  }
-
-  let update;
-  try {
-    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body;
-    const serialized = typeof raw === 'string' ? raw : JSON.stringify(raw ?? {});
-    if (Buffer.byteLength(serialized) > MAX_BODY_BYTES) {
-      return res.status(413).json({ error: 'Request too large.' });
+// Dependencies are injectable so tests never contact Telegram or spend AI credit.
+export function createHandler({ env = process.env, request = fetch, defer = waitUntil } = {}) {
+  async function send(config, chatId, text) {
+    for (let offset = 0; offset < text.length; offset += 3000) {
+      const response = await request(`https://api.telegram.org/bot${config.token}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: text.slice(offset, offset + 3000), reply_markup: KEYBOARD, link_preview_options: { is_disabled: true } }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok !== true) throw new Error('telegram_delivery_failed');
     }
-    update = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!update || !Number.isSafeInteger(update.update_id)) throw new Error('Invalid update.');
-  } catch {
-    return res.status(400).json({ error: 'Invalid update.' });
   }
 
-  const message = update.message;
-  // Только личные чаты. Каналы, группы, правки и сообщения ботов игнорируются.
-  if (
-    message?.chat?.type !== 'private' ||
-    !Number.isSafeInteger(message.chat.id) ||
-    message.from?.is_bot === true
-  ) {
+  async function processMessage(config, chatId, text) {
+    let answer = directReply(text);
+    if (!answer) {
+      try {
+        const response = await request('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: config.model, messages: [{ role: 'system', content: CORE }, { role: 'user', content: promptFor(text) }], max_tokens: 1000 }),
+          signal: AbortSignal.timeout(45_000),
+        });
+        if (!response.ok) throw new Error('ai_request_failed');
+        const data = await response.json();
+        answer = data.choices?.[0]?.message?.content?.trim();
+        if (!answer) throw new Error('ai_empty_response');
+        // Bound Telegram delivery work even if a provider ignores max_tokens.
+        answer = answer.slice(0, 9000);
+      } catch {
+        console.warn('telegram_bot: ai_unavailable');
+        answer = 'Сигнал временно прерван: ИИ не ответил. Проверьте ключ OpenRouter, доступность модели и баланс. Меню и /start работают без генерации.';
+      }
+    }
+    try { await send(config, chatId, answer); }
+    catch { console.warn('telegram_bot: delivery_failed'); }
+  }
+
+  return function handler(req, res) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    const config = configuration(env);
+    if (req.method === 'GET') {
+      return res.status(config.ready ? 200 : 503).json({ ok: config.ready, service: 'Dream the Muse Telegram webhook', configured: config.ready, memory: 'none' });
+    }
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'GET, POST');
+      return res.status(405).json({ error: 'Method not allowed.' });
+    }
+    if (!config.ready) return res.status(503).json({ error: 'Bot is not configured.' });
+    if (!sameSecret(req.headers['x-telegram-bot-api-secret-token'], config.secret)) {
+      return res.status(401).json({ error: 'Unauthorized.' });
+    }
+    if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) {
+      return res.status(415).json({ error: 'Use application/json.' });
+    }
+    if (Number(req.headers['content-length']) > MAX_BYTES) return res.status(413).json({ error: 'Request too large.' });
+    let update;
+    try {
+      const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : req.body;
+      const serialized = typeof raw === 'string' ? raw : JSON.stringify(raw ?? {});
+      if (Buffer.byteLength(serialized) > MAX_BYTES) return res.status(413).json({ error: 'Request too large.' });
+      update = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!update || !Number.isSafeInteger(update.update_id)) throw new Error('invalid');
+    } catch { return res.status(400).json({ error: 'Invalid update.' }); }
+    const message = update.message;
+    if (message?.chat?.type !== 'private' || message.chat.id !== config.owner ||
+        message.from?.id !== config.owner || message.from?.is_bot === true) {
+      return res.status(200).json({ ok: true });
+    }
+    const text = typeof message.text === 'string' ? message.text.trim() : '';
+    const commandTarget = /^\/[^\s@]+@([^\s]+)/.exec(text)?.[1];
+    if (commandTarget && commandTarget.toLowerCase() !== 'dreamthemusedeploy1052_bot') {
+      return res.status(200).json({ ok: true });
+    }
+    if (!text || text.length > 6000) {
+      defer(send(config, config.owner, 'Пришлите текст от 1 до 6000 символов.').catch(() => console.warn('telegram_bot: delivery_failed')));
+    } else {
+      defer(processMessage(config, config.owner, text));
+    }
+    // ACK promptly. waitUntil is best-effort, not a durable queue or exactly-once delivery.
     return res.status(200).json({ ok: true });
-  }
-
-  const text = typeof message.text === 'string'
-    ? replyFor(message.text, message.chat.id)
-    : 'Пока я понимаю только текст и кнопки меню. /menu — открыть меню.';
-  if (!text) return res.status(200).json({ ok: true });
-
-  // Telegram выполняет sendMessage из ответа на webhook: исходящий HTTP-запрос
-  // и токен бота в работающей функции не нужны. Результат доставки не возвращается.
-  return res.status(200).json({
-    method: 'sendMessage',
-    chat_id: message.chat.id,
-    text,
-    reply_markup: KEYBOARD,
-    link_preview_options: { is_disabled: true },
-  });
+  };
 }
+
+export default createHandler();
