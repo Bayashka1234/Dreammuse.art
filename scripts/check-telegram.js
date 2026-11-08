@@ -1,0 +1,60 @@
+import assert from 'node:assert/strict';
+import { createHandler } from '../api/telegram.js';
+
+// Synthetic, non-working values; no network or real credentials used.
+const env = {
+  TELEGRAM_BOT_TOKEN: '123456:test_placeholder_not_a_real_token',
+  TELEGRAM_WEBHOOK_SECRET: 'test_placeholder_secret_at_least_32_chars',
+  TELEGRAM_OWNER_ID: '123', OPENROUTER_API_KEY: 'test_placeholder',
+};
+let calls = [], jobs = [], aiFails = false, deliveryFails = false;
+const request = async (url, options) => {
+  calls.push({ url, body: JSON.parse(options.body) });
+  if (url.includes('openrouter')) {
+    return { ok: !aiFails, json: async () => ({ choices: [{ message: { content: '387 — импульс; 1052 — структура; ∞ — продолжение.' } }] }) };
+  }
+  if (deliveryFails) throw new Error('synthetic sensitive error must not escape');
+  return { ok: true, json: async () => ({ ok: true }) };
+};
+function invoke({ method = 'POST', secret = env.TELEGRAM_WEBHOOK_SECRET, body, type = 'application/json' } = {}, config = env) {
+  const handler = createHandler({ env: config, request, defer: promise => jobs.push(promise) });
+  const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, status(c) { this.code = c; return this; }, json(data) { this.body = data; return this; } };
+  handler({ method, headers: { 'content-type': type, 'x-telegram-bot-api-secret-token': secret }, body: body ?? update('/start') }, res);
+  return res;
+}
+function update(text, owner = 123) {
+  return { update_id: 1, message: { chat: { id: owner, type: 'private' }, from: { id: owner, is_bot: false }, text } };
+}
+async function drain() { await Promise.all(jobs); jobs = []; }
+assert.equal(invoke({ method: 'GET' }, {}).code, 503);
+assert.equal(invoke({ method: 'GET' }).code, 200);
+assert.equal(invoke({ method: 'PUT' }).code, 405);
+assert.equal(invoke({ secret: 'wrong' }).code, 401);
+assert.equal(invoke({ type: 'text/plain' }).code, 415);
+assert.equal(invoke({ body: '{' }).code, 400);
+assert.equal(invoke({ body: 'x'.repeat(64_001) }).code, 413);
+assert.equal(invoke({ body: { update_id: 1 } }).code, 200);
+invoke({ body: update('/start', 999) });
+const forged = update('/start'); forged.message.from.id = 999; invoke({ body: forged });
+const group = update('/start'); group.message.chat.type = 'group'; invoke({ body: group });
+invoke({ body: update('/start@another_bot') });
+assert.equal(calls.length, 0);
+assert.equal(jobs.length, 0);
+assert.equal(invoke({ body: update('/start@DreamTheMuseDeploy1052_bot') }).code, 200);
+await drain(); assert.equal(calls.length, 1); assert.match(calls[0].body.text, /Архитектор 1052/);
+calls = [];
+invoke({ body: update('Объясни вектор') }); await drain();
+assert.equal(calls.length, 2); assert.match(calls[0].body.messages[0].content, /387 — живой человеческий импульс/);
+assert.match(calls[0].body.messages[0].content, /не координаты/);
+assert.equal(calls[1].body.chat_id, 123);
+calls = [];
+invoke({ body: update('➜ Вектор 387 → 1052 → ∞') }); await drain();
+assert.equal(calls.length, 1); assert.match(calls[0].body.text, /художественный канон/);
+for (const text of ['🕯 Ритуал творчества', '🔮 Оракул', '🎵 Музыка', '🎨 Визуал', '🌐 Портал', '/privacy', '/reset']) {
+  calls = []; invoke({ body: update(text) }); await drain(); assert.ok(calls.length > 0);
+}
+calls = []; aiFails = true;
+invoke({ body: update('Привет') }); await drain(); assert.match(calls.at(-1).body.text, /Сигнал временно прерван/);
+deliveryFails = true; invoke(); await drain(); // Must not reject or expose upstream errors.
+assert.equal(invoke({}, { ...env, TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN + '\x16' }).code, 503);
+console.log('PASS: health/configuration, method/auth/body checks, owner/private filtering, bot targeting, menu, canonical AI prompt, explicit Telegram delivery, safe failures. All providers mocked.');
