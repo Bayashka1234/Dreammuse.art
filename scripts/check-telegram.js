@@ -16,10 +16,10 @@ const request = async (url, options) => {
   if (deliveryFails) throw new Error('synthetic sensitive error must not escape');
   return { ok: true, json: async () => ({ ok: true }) };
 };
-function invoke({ method = 'POST', secret = env.TELEGRAM_WEBHOOK_SECRET, body, type = 'application/json' } = {}, config = env) {
+function invoke({ method = 'POST', secret = env.TELEGRAM_WEBHOOK_SECRET, body, type = 'application/json', oidc } = {}, config = env) {
   const handler = createHandler({ env: config, request, defer: promise => jobs.push(promise) });
   const res = { headers: {}, setHeader(k, v) { this.headers[k] = v; }, status(c) { this.code = c; return this; }, json(data) { this.body = data; return this; } };
-  handler({ method, headers: { 'content-type': type, 'x-telegram-bot-api-secret-token': secret }, body: body ?? update('/start') }, res);
+  handler({ method, headers: { 'content-type': type, 'x-telegram-bot-api-secret-token': secret, 'x-vercel-oidc-token': oidc }, body: body ?? update('/start') }, res);
   return res;
 }
 function update(text, owner = 123) {
@@ -75,4 +75,17 @@ calls = [];
 invoke({ body: update('Приоритет ключа') }, { ...env, VERCEL_OIDC_TOKEN: 'synthetic_oidc' }); await drain();
 assert.equal(calls[0].headers.Authorization, 'Bearer test_placeholder');
 assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_MODEL: 'not-a-model-id' }).code, 503);
+// Deployed OIDC tokens arrive per invocation, not necessarily in process.env.
+for (const oidc of ['synthetic_current_oidc', 'synthetic_rotated_oidc']) {
+  calls = [];
+  assert.equal(invoke({ body: update('Проверка заголовка OIDC'), oidc }, { ...env, AI_GATEWAY_API_KEY: '' }).code, 200);
+  await drain();
+  assert.equal(calls[0].headers.Authorization, `Bearer ${oidc}`);
+}
+calls = [];
+invoke({ body: update('Текущий токен'), oidc: 'synthetic_current_oidc' }, { ...env, AI_GATEWAY_API_KEY: '', VERCEL_OIDC_TOKEN: 'synthetic_stale_oidc' }); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer synthetic_current_oidc');
+calls = [];
+invoke({ body: update('Приоритет ключа над заголовком'), oidc: 'synthetic_current_oidc' }); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer test_placeholder');
 console.log('PASS: health/configuration, method/auth/body checks, owner/private filtering, bot targeting, menu, canonical AI prompt, explicit Telegram delivery, safe failures. All providers mocked.');
