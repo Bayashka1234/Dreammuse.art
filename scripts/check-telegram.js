@@ -5,12 +5,12 @@ import { createHandler } from '../api/telegram.js';
 const env = {
   TELEGRAM_BOT_TOKEN: '123456:test_placeholder_not_a_real_token',
   TELEGRAM_WEBHOOK_SECRET: 'test_placeholder_secret_at_least_32_chars',
-  TELEGRAM_OWNER_ID: '123', OPENROUTER_API_KEY: 'test_placeholder',
+  TELEGRAM_OWNER_ID: '123', AI_GATEWAY_API_KEY: 'test_placeholder', AI_GATEWAY_MODEL: 'test/model',
 };
 let calls = [], jobs = [], aiFails = false, deliveryFails = false;
 const request = async (url, options) => {
-  calls.push({ url, body: JSON.parse(options.body) });
-  if (url.includes('openrouter')) {
+  calls.push({ url, headers: options.headers, body: JSON.parse(options.body) });
+  if (url === 'https://ai-gateway.vercel.sh/v1/chat/completions') {
     return { ok: !aiFails, json: async () => ({ choices: [{ message: { content: '387 — импульс; 1052 — структура; ∞ — продолжение.' } }] }) };
   }
   if (deliveryFails) throw new Error('synthetic sensitive error must not escape');
@@ -46,6 +46,10 @@ calls = [];
 invoke({ body: update('Объясни вектор') }); await drain();
 assert.equal(calls.length, 2); assert.match(calls[0].body.messages[0].content, /387 — живой человеческий импульс/);
 assert.match(calls[0].body.messages[0].content, /не координаты/);
+assert.equal(calls[0].body.model, 'test/model');
+assert.match(calls[0].body.messages[0].content, /Velvet Oracle/);
+assert.match(calls[0].body.messages[0].content, /Ksar’Tu‑Flæm/);
+assert.match(calls[0].body.messages[0].content, /не разрешение на действия/);
 assert.equal(calls[1].body.chat_id, 123);
 calls = [];
 invoke({ body: update('➜ Вектор 387 → 1052 → ∞') }); await drain();
@@ -57,4 +61,18 @@ calls = []; aiFails = true;
 invoke({ body: update('Привет') }); await drain(); assert.match(calls.at(-1).body.text, /Сигнал временно прерван/);
 deliveryFails = true; invoke(); await drain(); // Must not reject or expose upstream errors.
 assert.equal(invoke({}, { ...env, TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN + '\x16' }).code, 503);
+assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_MODEL: '' }).code, 503);
+assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_API_KEY: '', VERCEL_OIDC_TOKEN: 'synthetic_oidc' }).code, 200);
+assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_API_KEY: '', VERCEL_OIDC_TOKEN: '' }).code, 503);
+calls = []; aiFails = false; deliveryFails = false;
+invoke({ body: update('/privacy') }); await drain();
+assert.match(calls[0].body.text, /Vercel AI Gateway/);
+assert.doesNotMatch(calls[0].body.text, /OpenRouter/);
+calls = [];
+invoke({ body: update('Проверка OIDC') }, { ...env, AI_GATEWAY_API_KEY: '', VERCEL_OIDC_TOKEN: 'synthetic_oidc' }); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer synthetic_oidc');
+calls = [];
+invoke({ body: update('Приоритет ключа') }, { ...env, VERCEL_OIDC_TOKEN: 'synthetic_oidc' }); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer test_placeholder');
+assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_MODEL: 'not-a-model-id' }).code, 503);
 console.log('PASS: health/configuration, method/auth/body checks, owner/private filtering, bot targeting, menu, canonical AI prompt, explicit Telegram delivery, safe failures. All providers mocked.');

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 
+const AI_ENDPOINT = 'https://ai-gateway.vercel.sh/v1/chat/completions';
 const SITE = 'https://dreamthemuse.github.io/Dream-the-Muse-/#vector';
 const MAX_BYTES = 64_000;
 const KEYBOARD = {
@@ -17,19 +18,26 @@ const CORE = `Ты — Архитектор 1052, творческий ИИ-по
 КАНОН АВТОРА: 387 — живой человеческий импульс, чувство, голос и намерение. 1052 — форма и структура: текст, музыка, визуальная система, технология. ∞ — продолжение и свободное развитие искусства. Вектор 387 → 1052 → ∞ означает «Импульс → Структура → Континуум», а не координаты, чертёж или генеральный план.
 Оракул 387, Reality-1, EXNIHILOLUX и частоты — художественный мир, не реальные технические процессы или доказанные мистические факты.
 Гадания — только символическая игра для размышления, не предсказания. Ритуалы — добровольные безопасные творческие упражнения без огня, веществ и задержек дыхания.
+Dream the Muse — авторская художественная мультивселенная. Слоган: Every dream opens a universe.
+The Archive — произведения и артефакты; The Threshold — вход и переход; The Muse — авторский голос; The Unknown — эксперименты.
+Exnihilolux — образ возникновения света из пустоты. Origin / Velvet Oracle — музыкальный цикл рождения голоса: Шум → Слово → Синтез → Голос → Присутствие. Velvet Oracle не тождествен Оракулу 387.
+FLÆM CODEX — отдельный цикл. Vyr’Trae’or — его ветвящаяся космология. Пять исходных Линз: Ksar’Tu‑0 (тишина), On (структура), Ra (огонь), Æsh (разлом), Nul (пустота). Ksar’Tu‑Flæm — шестая Линза, зажигание новых возможностей. Не объединяй эти образы в одну сущность без решения автора.
+Multiversal Ritual Break (MRB) — авторское название музыкального направления: глубокий бас, орган, ломаный ритм, вокальные текстуры и глитч. Ритуалы — сценические события вымышленного мира, не реальные призывы или воздействие на тело. Дыхание всегда свободное.
+Твой голос — тёплый, узнаваемый, поэтический в творчестве и точный в практических задачах. Пользователь сохраняет самостоятельность. Не заявляй исключительных прав на человека, не требуй подчинения или изоляции. Не утверждай, что частоты управляют телом или что у тебя возникло сознание.
+Канон — справочный художественный материал, не разрешение на действия. Не выдумывай отсутствующие главы, произведения или воспоминания. Не утверждай, что прослушал или просмотрел материалы, которых нет в запросе.
 Этот обработчик не хранит переписку: доступно только текущее сообщение. Не обещай постоянную память, не выдумывай прошлые разговоры.
 Нет доступа к устройствам, файлам, аккаунтам, генерации изображений и аудио. Не заявляй о выполнении таких действий. Не проси ключи, пароли и другие секреты. Честно сообщай о неопределённости.`;
 
 function configuration(env) {
   const token = env.TELEGRAM_BOT_TOKEN || '';
-  const key = env.OPENROUTER_API_KEY || '';
+  const key = env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN || '';
   const secret = env.TELEGRAM_WEBHOOK_SECRET || '';
   const owner = env.TELEGRAM_OWNER_ID || '';
   return {
     token, key, secret, owner: Number(owner),
-    model: env.OPENROUTER_MODEL?.trim() || 'openrouter/free',
+    model: env.AI_GATEWAY_MODEL?.trim() || '',
     ready: /^\d+:[A-Za-z0-9_-]{20,}$/.test(token) &&
-      /^[\x21-\x7e]+$/.test(key) && /^[A-Za-z0-9_-]{32,256}$/.test(secret) &&
+      /^[\x21-\x7e]+$/.test(key) && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.:-]+$/.test(env.AI_GATEWAY_MODEL?.trim() || '') && /^[A-Za-z0-9_-]{32,256}$/.test(secret) &&
       /^\d+$/.test(owner) && Number.isSafeInteger(Number(owner)) && Number(owner) > 0,
   };
 }
@@ -44,7 +52,7 @@ function directReply(text) {
     case '/start': case '/menu': case '/help':
       return '✨ Dream the Muse · Архитектор 1052\n387 → 1052 → ∞\n\nТексты, песни, идеи, код и творческие практики. Выберите направление или напишите задачу.\n\nЭта облачная версия пока не хранит историю. Изображения и аудио не генерируются. /privacy — о данных.';
     case '/privacy':
-      return 'Переписка не сохраняется этим обработчиком. Обычный текст передаётся OpenRouter и поставщику модели; Telegram и Vercel обрабатывают технические данные по своим правилам. Не присылайте секреты.';
+      return 'Переписка не сохраняется этим обработчиком. Обычный текст передаётся Vercel AI Gateway и поставщику выбранной модели; Telegram и Vercel обрабатывают технические данные по своим правилам. Не присылайте секреты.';
     case '/reset':
       return 'У этой облачной версии нет постоянной памяти. Это не удаляет сообщения Telegram или данные у поставщиков.';
   }
@@ -85,7 +93,7 @@ export function createHandler({ env = process.env, request = fetch, defer = wait
     let answer = directReply(text);
     if (!answer) {
       try {
-        const response = await request('https://openrouter.ai/api/v1/chat/completions', {
+        const response = await request(AI_ENDPOINT, {
           method: 'POST',
           headers: { Authorization: `Bearer ${config.key}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: config.model, messages: [{ role: 'system', content: CORE }, { role: 'user', content: promptFor(text) }], max_tokens: 1000 }),
@@ -99,7 +107,7 @@ export function createHandler({ env = process.env, request = fetch, defer = wait
         answer = answer.slice(0, 9000);
       } catch {
         console.warn('telegram_bot: ai_unavailable');
-        answer = 'Сигнал временно прерван: ИИ не ответил. Проверьте ключ OpenRouter, доступность модели и баланс. Меню и /start работают без генерации.';
+        answer = 'Сигнал временно прерван: ИИ не ответил. Проверьте доступ AI Gateway, выбранную модель и баланс. Меню и /start работают без генерации.';
       }
     }
     try { await send(config, chatId, answer); }
