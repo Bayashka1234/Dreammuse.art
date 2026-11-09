@@ -55,5 +55,9 @@ $('form').addEventListener('submit',e=>{e.preventDefault();const text=$('input')
 $('sound').addEventListener('click',async()=>{if(sound){sound=false;if(music)music.pause();if(effect)effect.pause();$('sound').textContent='Включить звук';$('sound').setAttribute('aria-pressed','false');return}if(!music){music=new Audio('1.mp3');music.loop=true}music.volume=sleeping?.05:.15;try{await music.play();sound=true;$('sound').textContent='Выключить звук';$('sound').setAttribute('aria-pressed','true');$('notice').textContent='Звук включён.'}catch{$('notice').textContent='Звук недоступен. Проверь файл 1.mp3. Терминал работает без аудио.'}});
 $('reset').addEventListener('click',()=>{if($('dialog').open)return;$('dialog').returnValue='';$('dialog').showModal()});$('dialog').addEventListener('cancel',()=>{$('dialog').returnValue='cancel'});$('dialog').addEventListener('close',()=>{if($('dialog').returnValue==='confirm'){state={sync:0,found:[]};sleep(false);save();$('messages').replaceChildren();add('Архив открыт заново. Начни с /sync.');$('notice').textContent='Прогресс сброшен.'}$('reset').focus({preventScroll:true})});render();add('ВЕКТОР 105.2 ПРИНЯТ. Архив открыт. Начни с /sync или /artifact.');
 </script>
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
