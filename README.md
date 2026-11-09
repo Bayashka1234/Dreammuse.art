@@ -1,94 +1,50 @@
-<header>
+# Dream the Muse API
 
-<!--
-  <<< Author notes: Course header >>>
-  Read <https://skills.github.com/quickstart> for more information about how to build courses using this template.
-  Include a 1280×640 image, course name in sentence case, and a concise description in emphasis.
-  In your repository settings: enable template repository, add your 1280×640 social image, auto delete head branches.
-  Next to "About", add description & tags; disable releases, packages, & environments.
-  Add your open source license, GitHub uses the MIT license.
--->
+Серверная часть Dream the Muse: веб-чат и личный Telegram-помощник «Архитектор 1052». Репозиторий также содержит статические материалы художественного мира. Это не объединённая мультиагентная система: память и общая работа нескольких ботов пока не реализованы.
 
-# Code with GitHub Copilot
+## Навигация
 
-_GitHub Copilot can help you code by offering autocomplete-style suggestions right in VS Code and Codespaces._
+- [Настройка Telegram, секреты и проверка доставки](TELEGRAM.md)
+- [Архитектура и этапы объединения ботов и ИИ](ARCHITECTURE.md)
+- [Лицензия](LICENSE)
 
-</header>
+## Структура
 
-<!--
-  <<< Author notes: Step 1 >>>
-  Choose 3-5 steps for your course.
-  The first step is always the hardest, so pick something easy!
-  Link to docs.github.com for further explanations.
-  Encourage users to open new tabs for steps!
--->
+| Путь | Назначение |
+| --- | --- |
+| `api/chat.js` | Обработчик веб-чата |
+| `api/telegram.js` | Telegram webhook: личный чат владельца, меню и ответы через OpenRouter |
+| `scripts/setup-telegram.js` | Регистрация webhook, запускаемая владельцем локально |
+| `scripts/check-telegram.js` | Изолированные проверки Telegram-обработчика с mock API |
+| `public/` | Статические файлы |
+| `pages/graph/`, `pages/codex/` | Художественные страницы; не база памяти |
+| `vercel.json` | Ограничения длительности серверных функций |
 
-## Step 1: Leverage Codespaces with VS Code for Copilot
+Основной сайт и существующий персонализированный eve-агент поддерживаются отдельно. Не переносить и не удалять их как дубли этого API без проверки.
 
-_Welcome to "Develop With AI Powered Code Suggestions Using GitHub Copilot and VS Code"! :wave:_
+## Локальная проверка
 
-GitHub Copilot is an AI pair programmer that helps you write code faster and with less work. It draws context from comments and code to suggest individual lines and whole functions instantly. GitHub Copilot is powered by OpenAI Codex, a generative pretrained language model created by OpenAI.
+Используется Node.js 24 и npm с `package-lock.json`:
 
-**Copilot works with many code editors including VS Code, Visual Studio, JetBrains IDE, and Neovim.**
+```sh
+npm ci
+node scripts/check-telegram.js
+```
 
-Additionally, GitHub Copilot is trained on all languages that appear in public repositories. For each language, the quality of suggestions you receive may depend on the volume and diversity of training data for that language.
+Проверка не обращается к реальным Telegram и AI API и не расходует кредиты. Она не подтверждает работу production webhook или валидность ключей.
 
-Using Copilot inside a Codespace shows just how easy it is to get up and running with GitHub's suite of [Collaborative Coding](https://github.com/features#features-collaboration) tools.
+## Перед запуском
 
-> **Note**
-> This skills exercise will focus on leveraging GitHub Codespace. It is recommended that you complete the GitHub skill, [Codespaces](https://github.com/skills/code-with-codespaces), before moving forward with this exercise.
+Следуйте [TELEGRAM.md](TELEGRAM.md): владелец сохраняет секреты в переменных окружения, публикуется актуальный код, затем проверяется и регистрируется webhook. Корень приложения — корень репозитория, а не папка `api`.
 
-### :keyboard: Activity: Enable Copilot inside a Codespace
+Текущий Telegram-провайдер — OpenRouter. Использование AI Gateway потребует отдельного изменения кода. Не добавляйте секреты в чат, GitHub, аргументы команд или логи.
 
-**We recommend opening another browser tab to work through the following activities so you can keep these instructions open for reference.**
+## Текущие ограничения
 
-Before you open up a codespace on a repository, you can create a development container and define specific extensions or configurations that will be used or installed in your codespace. Let's create this development container and add copilot to the list of extensions.
+- Telegram отвечает только настроенному владельцу в личном чате.
+- История не хранится: каждый запрос содержит только текущее сообщение и инструкции.
+- Нет общей памяти с веб-чатом или eve-агентом.
+- Нет генерации медиа, внешних действий или самостоятельного доступа к устройствам.
+- Продолжение работы через `waitUntil` не заменяет очередь, дедупликацию и надёжные повторы.
 
-1. Navigating back to your **Code** tab of your repository, click the **Add file** drop-down button, and then click `Create new file`.
-1. Type or paste the following in the empty text field prompt to name your file.
-   ```
-   .devcontainer/devcontainer.json
-   ```
-1. In the body of the new **.devcontainer/devcontainer.json** file, add the following content:
-   ```
-   {
-       // Name this configuration
-       "name": "Codespace for Skills!",
-       "customizations": {
-           "vscode": {
-               "extensions": [
-                   "GitHub.copilot"
-               ]
-           }
-       }
-   }
-   ```
-1. Select the option to **Commit directly to the `main` branch**, and then click the **Commit new file** button.
-1. Navigate back to the home page of your repository by clicking the **Code** tab located at the top left of the screen.
-1. Click the **Code** button located in the middle of the page.
-1. Click the **Codespaces** tab on the box that pops up.
-1. Click the **Create codespace on main** button.
-
-   **Wait about 2 minutes for the codespace to spin itself up.**
-
-1. Verify your codespace is running. The browser should contain a VS Code web-based editor and a terminal should be present such as the below:
-   ![Screen Shot 2023-03-09 at 9 09 07 AM](https://user-images.githubusercontent.com/26442605/224102962-d0222578-3f10-4566-856d-8d59f28fcf2e.png)
-1. The `copilot` extension should show up in the VS Code extension list. Click the extensions sidebar tab. You should see the following:
-   ![Screen Shot 2023-03-09 at 9 04 13 AM](https://user-images.githubusercontent.com/26442605/224102514-7d6d2f51-f435-401d-a529-7bae3ae3e511.png)
-
-**Wait about 60 seconds then refresh your repository landing page for the next step.**
-
-<footer>
-
-<!--
-  <<< Author notes: Footer >>>
-  Add a link to get support, GitHub status page, code of conduct, license link.
--->
-
----
-
-Get help: [Post in our discussion board](https://github.com/orgs/skills/discussions/categories/code-with-copilot) &bull; [Review the GitHub status page](https://www.githubstatus.com/)
-
-&copy; 2023 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
-
-</footer>
+Следующие изменения должны добавлять эти возможности явно, с проверками безопасности, приватности и расходов; план находится в [ARCHITECTURE.md](ARCHITECTURE.md).
