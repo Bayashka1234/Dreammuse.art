@@ -75,4 +75,26 @@ calls = [];
 invoke({ body: update('Приоритет ключа') }, { ...env, VERCEL_OIDC_TOKEN: 'synthetic_oidc' }); await drain();
 assert.equal(calls[0].headers.Authorization, 'Bearer test_placeholder');
 assert.equal(invoke({ method: 'GET' }, { ...env, AI_GATEWAY_MODEL: 'not-a-model-id' }).code, 503);
+// Reproduce production: no static env token, one reused handler, rotating headers.
+const productionEnv = { ...env, VERCEL: '1', AI_GATEWAY_API_KEY: '', VERCEL_OIDC_TOKEN: 'stale_local_token' };
+const reusedHandler = createHandler({ env: productionEnv, request, defer: promise => jobs.push(promise) });
+function productionCall(oidc, secret = env.TELEGRAM_WEBHOOK_SECRET) {
+  const res = { setHeader() {}, status(code) { this.code = code; return this; }, json(data) { this.body = data; return this; } };
+  reusedHandler({ method: 'POST', headers: { 'content-type': 'application/json', 'x-telegram-bot-api-secret-token': secret, 'x-vercel-oidc-token': oidc }, body: update('Привет') }, res);
+  return res;
+}
+calls = [];
+assert.equal(productionCall('synthetic_request_one').code, 200); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer synthetic_request_one');
+calls = [];
+assert.equal(productionCall('synthetic_request_two').code, 200); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer synthetic_request_two');
+calls = [];
+assert.equal(productionCall(undefined).code, 503); // No stale env fallback on Vercel.
+assert.equal(productionCall(['ambiguous', 'header']).code, 503);
+assert.equal(productionCall('synthetic_request_three', 'wrong').code, 401);
+assert.equal(calls.length, 0);
+productionEnv.AI_GATEWAY_API_KEY = 'explicit_test_key';
+assert.equal(productionCall('synthetic_request_four').code, 200); await drain();
+assert.equal(calls[0].headers.Authorization, 'Bearer explicit_test_key');
 console.log('PASS: health/configuration, method/auth/body checks, owner/private filtering, bot targeting, menu, canonical AI prompt, explicit Telegram delivery, safe failures. All providers mocked.');

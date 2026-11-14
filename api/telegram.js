@@ -28,9 +28,12 @@ Multiversal Ritual Break (MRB) — авторское название музы�
 Этот обработчик не хранит переписку: доступно только текущее сообщение. Не обещай постоянную память, не выдумывай прошлые разговоры.
 Нет доступа к устройствам, файлам, аккаунтам, генерации изображений и аудио. Не заявляй о выполнении таких действий. Не проси ключи, пароли и другие секреты. Честно сообщай о неопределённости.`;
 
-function configuration(env) {
+function configuration(env, headers) {
   const token = env.TELEGRAM_BOT_TOKEN || '';
-  const key = env.AI_GATEWAY_API_KEY || env.VERCEL_OIDC_TOKEN || '';
+  // Vercel injects the current credential per invocation; never cache it.
+  // The environment token is for local development only.
+  const oidc = env.VERCEL === '1' ? headers['x-vercel-oidc-token'] : env.VERCEL_OIDC_TOKEN;
+  const key = env.AI_GATEWAY_API_KEY || (typeof oidc === 'string' ? oidc : '') || '';
   const secret = env.TELEGRAM_WEBHOOK_SECRET || '';
   const owner = env.TELEGRAM_OWNER_ID || '';
   return {
@@ -117,7 +120,7 @@ export function createHandler({ env = process.env, request = fetch, defer = wait
   return function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    const config = configuration(env);
+    const config = configuration(env, req.headers);
     if (req.method === 'GET') {
       return res.status(config.ready ? 200 : 503).json({ ok: config.ready, service: 'Dream the Muse Telegram webhook', configured: config.ready, memory: 'none' });
     }
